@@ -6,7 +6,7 @@ local frame = {
 	fonts = {
 		proggyclean = nil,
 		smallestpixel = nil,
-	}
+	},
 	_connections = { },
 }
 
@@ -802,7 +802,7 @@ do -- init fonts
 	frame.fonts.proggyclean = frame.new_font("ProggyClean", 400, "Regular", {
         Id = "ProggyClean",
         Url = "https://github.com/chrissimpkins/codeface/raw/refs/heads/master/fonts/proggy-clean/ProggyClean.ttf"
-    }),
+    })
 	frame.fonts.proggyclean = frame.new_font("SmallestPixel1", 400, "Regular", {
         Id = "SmallestPixel1",
         Url = "https://github.com/token3145-png/juice/raw/refs/heads/main/smallest_pixel-7.ttf"
