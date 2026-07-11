@@ -239,13 +239,15 @@ function frame.stroke( element, properties )
 end
 
 function frame.add_stroke( obj, border )
-	return frame.create("UIStroke", obj, nil, border and {
+	return frame.create("UIStroke", border and {
 		Color = Color3.fromRGB(31, 31, 31),
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 		LineJoinMode = Enum.LineJoinMode.Miter,
+        Parent = obj
 	} or {
 		Color = Color3.fromRGB(31, 31, 31),
 		LineJoinMode = Enum.LineJoinMode.Miter,
+        Parent = obj
 	})
 end
 
@@ -877,3 +879,5 @@ do -- init fonts
 		Url = "https://github.com/token3145-png/juice/raw/refs/heads/main/smallest_pixel-7.ttf",
 	})
 end
+
+return frame
