@@ -34,6 +34,8 @@ local shortend_key = {
 	F7 = "f7", F8 = "f8", F9 = "f9", F10 = "f10", F11 = "f11", F12 = "f12",
 }
 
+frame.shortend_key = shortend_key
+
 local default_tween = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 function frame.new_font(Name, Weight, Style, FontData)
@@ -62,6 +64,9 @@ function frame.create( className, properties )
 	for prop, value in pairs(properties) do
 		inst[prop] = value
 	end
+	if inst:IsA("TextButton") or inst:IsA("ImageButton") then
+		inst.AutoButtonColor = false
+	end
 	return inst
 end
 
@@ -86,7 +91,8 @@ function frame.round( element, size )
 end
 
 function frame.padding( element, padding )
-	local UiPadding = Instance.new("UiPadding", {parent = element} )
+	local UiPadding = Instance.new("UIPadding")
+	UiPadding.Parent = element
 	local size_mode = type(padding) == "table" and "TBL" or type(padding) == "number" and "NUM"
 
 	if size_mode == "NUM" and padding then 
@@ -225,10 +231,62 @@ function frame.stroke( element, properties )
 	stroke.Thickness = properties.Thickness or 1
 	stroke.Transparency = properties.Transparency or 0
 	stroke.ApplyStrokeMode = properties.Mode or Enum.ApplyStrokeMode.Border
-	stroke.LineJoinMode = Enum.LineJoinMode.Round
+	stroke.LineJoinMode = Enum.LineJoinMode.Miter
+	if properties.ZIndex then stroke.ZIndex = properties.ZIndex end
 	stroke.Parent = element
 
 	return stroke
+end
+
+function frame.add_stroke( obj, border )
+	return frame.create("UIStroke", obj, nil, border and {
+		Color = Color3.fromRGB(31, 31, 31),
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		LineJoinMode = Enum.LineJoinMode.Miter,
+	} or {
+		Color = Color3.fromRGB(31, 31, 31),
+		LineJoinMode = Enum.LineJoinMode.Miter,
+	})
+end
+
+function frame.disconnect_all()
+	if not frame._connections then return end
+	for _, c in ipairs(frame._connections) do pcall(function() c:Disconnect() end) end
+	frame._connections = {}
+end
+
+function frame.get_input_name( input )
+	if input.UserInputType == Enum.UserInputType.Keyboard then
+		return shortend_key[input.KeyCode.Name] or input.KeyCode.Name
+	end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then return "mb1" end
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then return "mb2" end
+	if input.UserInputType == Enum.UserInputType.MouseButton3 then return "mb3" end
+end
+
+function frame.set_zindex( root, z )
+	if root:IsA("GuiObject") then root.ZIndex = z end
+	for _, obj in ipairs(root:GetDescendants()) do
+		if obj:IsA("GuiObject") then obj.ZIndex = z + 1 end
+	end
+end
+
+function frame.close_if_not_over( frames, closeCallback )
+	local hovered = false
+	for _, f in ipairs(frames) do
+		f.MouseEnter:Connect(function() hovered = true end)
+		f.MouseLeave:Connect(function() hovered = false end)
+	end
+	local conn
+	conn = UIS.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if not hovered then
+				conn:Disconnect()
+				closeCallback()
+			end
+		end
+	end)
+	return conn
 end
 
 function frame.shadow( element, properties )
@@ -483,24 +541,6 @@ function frame.set_dropdown( btn, option_example, holder_frame, properties )
 		end)
 	)
 
-	local outsideConn = frame.new_connection(
-		UIS.InputBegan:Connect(function(input)
-			if not holder_frame.Visible then return end
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
-				local pos = UIS:GetMouseLocation()
-				local function inBounds( obj )
-					local a = obj.AbsolutePosition
-					local s = obj.AbsoluteSize
-					return pos.X >= a.X and pos.X <= a.X + s.X
-					   and pos.Y >= a.Y and pos.Y <= a.Y + s.Y
-				end
-				if not inBounds(btn) and not inBounds(holder_frame) then
-					holder_frame.Visible = false
-				end
-			end
-		end)
-	)
-
 	return {
 		Get = function() return selected end,
 		Set = function( opt ) select_option(opt) end,
@@ -509,7 +549,6 @@ function frame.set_dropdown( btn, option_example, holder_frame, properties )
 		Close = function() holder_frame.Visible = false end,
 		Destroy = function()
 			frame.remove_connection(toggleConn)
-			frame.remove_connection(outsideConn)
 		end,
 	}
 end
@@ -798,15 +837,43 @@ function frame.set_hover( element, properties )
 	end))
 end
 
-do -- init fonts
-	frame.fonts.proggyclean = frame.new_font("ProggyClean", 400, "Regular", {
-        Id = "ProggyClean",
-        Url = "https://github.com/chrissimpkins/codeface/raw/refs/heads/master/fonts/proggy-clean/ProggyClean.ttf"
-    })
-	frame.fonts.proggyclean = frame.new_font("SmallestPixel1", 400, "Regular", {
-        Id = "SmallestPixel1",
-        Url = "https://github.com/token3145-png/juice/raw/refs/heads/main/smallest_pixel-7.ttf"
-    })
+function frame.enable_resize( main_frame, resizebtn )
+	local dragStart, startSize, dragging
+	local minWidth = 200
+	local minHeight = 150
+
+	frame.new_connection(resizebtn.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragStart = input.Position
+			startSize = main_frame.Size
+			dragging = true
+		end
+	end))
+
+	frame.new_connection(resizebtn.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end))
+
+	frame.new_connection(UIS.InputChanged:Connect(function(input)
+		if not dragging then return end
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			local delta = input.Position - dragStart
+			local w = math.max(minWidth, startSize.X.Offset + delta.X)
+			local h = math.max(minHeight, startSize.Y.Offset + delta.Y)
+			main_frame.Size = UDim2.new(startSize.X.Scale, w, startSize.Y.Scale, h)
+		end
+	end))
 end
 
-return frame
+do -- init fonts
+	frame.fonts.proggyclean = frame.new_font("ProggyClean", 400, "Regular", {
+		Id = "ProggyClean",
+		Url = "https://github.com/chrissimpkins/codeface/raw/refs/heads/master/fonts/proggy-clean/ProggyClean.ttf",
+	})
+	frame.fonts.smallestpixel = frame.new_font("SmallestPixel11", 400, "Regular", {
+		Id = "SmallestPixel11",
+		Url = "https://github.com/token3145-png/juice/raw/refs/heads/main/smallest_pixel-7.ttf",
+	})
+end
