@@ -167,20 +167,23 @@ function frame.add_glow( element, properties )
 	return layers
 end
 
-function frame.set_dragging( element, _frame )
+function frame.set_dragging( element )
 	local dragStart, startPos, dragging
 
 	frame.new_connection(element.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if frame._isResizing then return end
 			dragStart = input.Position
-			startPos = _frame.Position
+			startPos = element.Position
 			dragging = true
+			frame._isDragging = true
 		end
 	end))
 
 	frame.new_connection(element.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = false
+			frame._isDragging = false
 		end
 	end))
 
@@ -188,7 +191,7 @@ function frame.set_dragging( element, _frame )
 		if not dragging then return end
 		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 			local delta = input.Position - dragStart
-			_frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			element.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 		end
 	end))
 end
@@ -537,6 +540,60 @@ function frame.set_dropdown( btn, option_example, holder_frame, properties )
 		end
 	end
 
+	local function clear_options()
+		for _, child in ipairs(holder_frame:GetChildren()) do
+			if child:IsA("TextButton") and child ~= option_example then
+				child:Destroy()
+			end
+		end
+		optionButtons = {}
+		selectedSet = {}
+	end
+
+	local function set_options(newOptions)
+		if not option_example then return end
+		clear_options()
+		options = newOptions or {}
+		local keep = selected and selected ~= ""
+		if keep then
+			local inList = false
+			for _, o in ipairs(options) do
+				if o == selected then inList = true break end
+			end
+			if not inList then keep = false end
+		end
+		if not keep then
+			selected = options[1] or ""
+		end
+		if selected == "" or selected == nil then
+			selected = options[1] or ""
+		end
+		selectedSet[selected] = true
+		option_example.Visible = false
+		for i, opt in ipairs(options) do
+			local clone = option_example:Clone()
+			clone.Name = opt
+			clone.Text = opt
+			clone.LayoutOrder = i
+			clone.Visible = true
+			clone.Parent = holder_frame
+			local label = clone:FindFirstChildOfClass("TextLabel") or clone
+			label.Text = opt
+			local accent = properties.Accent or Color3.fromRGB(122, 121, 161)
+			local textColor = properties.TextColor or Color3.fromRGB(199, 200, 236)
+			if selectedSet[opt] then
+				if label:IsA("TextLabel") then
+					label.TextColor3 = accent
+				end
+			end
+			clone.MouseButton1Click:Connect(function()
+				select_option(opt)
+			end)
+			optionButtons[opt] = label
+		end
+		callback(selected)
+	end
+
 	local toggleConn = frame.new_connection(
 		btn.MouseButton1Click:Connect(function()
 			holder_frame.Visible = not holder_frame.Visible
@@ -546,6 +603,7 @@ function frame.set_dropdown( btn, option_example, holder_frame, properties )
 	return {
 		Get = function() return selected end,
 		Set = function( opt ) select_option(opt) end,
+		SetOptions = set_options,
 		IsOpen = function() return holder_frame.Visible end,
 		Open = function() holder_frame.Visible = true end,
 		Close = function() holder_frame.Visible = false end,
@@ -846,15 +904,18 @@ function frame.enable_resize( main_frame, resizebtn )
 
 	frame.new_connection(resizebtn.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if frame._isDragging then return end
 			dragStart = input.Position
 			startSize = main_frame.Size
 			dragging = true
+			frame._isResizing = true
 		end
 	end))
 
 	frame.new_connection(resizebtn.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = false
+			frame._isResizing = false
 		end
 	end))
 
