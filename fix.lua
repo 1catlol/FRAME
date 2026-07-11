@@ -172,15 +172,18 @@ function frame.set_dragging( element )
 
 	frame.new_connection(element.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if frame._isResizing then return end
 			dragStart = input.Position
 			startPos = element.Position
 			dragging = true
+			frame._isDragging = true
 		end
 	end))
 
 	frame.new_connection(element.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = false
+			frame._isDragging = false
 		end
 	end))
 
@@ -239,13 +242,15 @@ function frame.stroke( element, properties )
 end
 
 function frame.add_stroke( obj, border )
-	return frame.create("UIStroke", obj, nil, border and {
+	return frame.create("UIStroke", border and {
 		Color = Color3.fromRGB(31, 31, 31),
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 		LineJoinMode = Enum.LineJoinMode.Miter,
+        Parent = obj
 	} or {
 		Color = Color3.fromRGB(31, 31, 31),
 		LineJoinMode = Enum.LineJoinMode.Miter,
+        Parent = obj
 	})
 end
 
@@ -844,15 +849,18 @@ function frame.enable_resize( main_frame, resizebtn )
 
 	frame.new_connection(resizebtn.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if frame._isDragging then return end
 			dragStart = input.Position
 			startSize = main_frame.Size
 			dragging = true
+			frame._isResizing = true
 		end
 	end))
 
 	frame.new_connection(resizebtn.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = false
+			frame._isResizing = false
 		end
 	end))
 
