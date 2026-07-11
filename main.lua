@@ -167,13 +167,13 @@ function frame.add_glow( element, properties )
 	return layers
 end
 
-function frame.set_dragging( element )
+function frame.set_dragging( element, _frame )
 	local dragStart, startPos, dragging
 
 	frame.new_connection(element.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragStart = input.Position
-			startPos = element.Position
+			startPos = _frame.Position
 			dragging = true
 		end
 	end))
@@ -188,7 +188,7 @@ function frame.set_dragging( element )
 		if not dragging then return end
 		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 			local delta = input.Position - dragStart
-			element.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			_frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 		end
 	end))
 end
